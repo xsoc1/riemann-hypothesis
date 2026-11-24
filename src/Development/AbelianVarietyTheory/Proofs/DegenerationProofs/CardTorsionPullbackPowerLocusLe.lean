@@ -1,5 +1,6 @@
 module
 
+import Formalism.SharedLemmas.TorsionFibers
 public import Development.AbelianVarietyTheory.Definitions.Degenerations.OfDerivationFnOn
 public import Development.AbelianVarietyTheory.Proofs.UnitaryExistence.ExistsIsClosedImageOfIsClosedSubgroup
 public import Development.AbelianVarietyTheory.Proofs.AbelianSchemeLawProofs.ExistsSplitTorusPointsMulEquiv
@@ -578,27 +579,9 @@ theorem card_torsion_le {Γ T J : Type} [Group Γ] [Group T] [Finite J] (hΓ : �
     (hc : ∀ x y, c x = c y → ∃ t, i t = x.1 * y.1⁻¹) (n : ℕ) [Finite {t : T // t ^ n = 1}] :
     Finite {x : Γ // P x ∧ x ^ n = 1} ∧
       Nat.card {x : Γ // P x ∧ x ^ n = 1} ≤ Nat.card J * Nat.card {t : T // t ^ n = 1} := by
-  rcases isEmpty_or_nonempty {x : Γ // P x ∧ x ^ n = 1} with h | h
-  · exact ⟨inferInstance, by simp⟩
-  let d : {x : Γ // P x ∧ x ^ n = 1} → J := fun x => c ⟨x.1, x.2.1⟩
-  have h1 : ∀ x : {x : Γ // P x ∧ x ^ n = 1}, ∃ t : {t : T // t ^ n = 1},
-      i t.1 = x.1 * (Function.invFun d (d x)).1⁻¹ := by
-    intro x
-    have e : d (Function.invFun d (d x)) = d x := Function.invFun_eq ⟨x, rfl⟩
-    obtain ⟨t, ht⟩ := hc _ _ e.symm
-    refine ⟨⟨t, hi ?_⟩, ht⟩
-    rw [map_pow, ht, map_one, (hΓ _ _).mul_pow, inv_pow]
-    change x.1 ^ n * ((Function.invFun d (d x)).1 ^ n)⁻¹ = 1
-    rw [x.2.2, (Function.invFun d (d x)).2.2, inv_one, _root_.mul_one]
-  choose τ hτ using h1
-  have hinj : Function.Injective fun x => (d x, τ x) := by
-    intro x y hxy
-    have e1 : d x = d y := congrArg Prod.fst hxy
-    have e2 : τ x = τ y := congrArg Prod.snd hxy
-    have e3 := hτ x
-    rw [e1, e2, hτ y] at e3
-    exact Subtype.ext (mul_right_cancel e3).symm
-  exact ⟨Finite.of_injective _ hinj, (Nat.card_le_card_of_injective _ hinj).trans (Nat.card_prod _ _).le⟩
+  exact Alpoge.GroupTheory.finite_and_card_le_of_torsion_fibers n (P := fun x => P x ∧ x ^ n = 1)
+    (fun x => x.2.2) (fun x y => hΓ x.1 y.1) i hi
+    (fun x => c ⟨x.1, x.2.1⟩) (fun _ _ h => hc _ _ h)
 
 theorem torus_torsion (k : Type) [Field k] (X : Type) [AddCommGroup X] [Module.Free ℤ X]
     [Module.Finite ℤ X] (n : ℕ) (hn : 1 ≤ n) :

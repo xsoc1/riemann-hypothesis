@@ -1,5 +1,6 @@
 module
 
+import Formalism.SharedLemmas.TorsionFibers
 public import Development.AbelianVarietyTheory.PublishedTheorems.Landherr₂.DimEqZero
 public import Development.AbelianVarietyTheory.Proofs.CoherentCohomologyProofs.AbelianVarietyTorsionCardEqPowProof
 public import Development.AbelianVarietyTheory.Definitions.Degenerations.PlOrdSomeOfAssociated
@@ -959,30 +960,22 @@ theorem card_torsion_le_mul {A B : Type} [CommGroup A] [CommGroup B] (f : A →*
     [Finite {x : A // f x = 1 ∧ x ^ n = 1}] [Finite {y : B // y ^ n = 1}] :
     Finite {x : A // x ^ n = 1} ∧
       Nat.card {x : A // x ^ n = 1} ≤ Nat.card {x : A // f x = 1 ∧ x ^ n = 1} * Nat.card {y : B // y ^ n = 1} := by
-  classical
-  let c : B → A := fun b => if h : ∃ a : {x : A // x ^ n = 1}, f a = b then (h.choose : A) else 1
-  have hc : ∀ x : {x : A // x ^ n = 1}, (c (f x)) ^ n = 1 ∧ f (c (f x)) = f x := by
-    intro x
-    have h : ∃ a : {x : A // x ^ n = 1}, f a = f x := ⟨x, rfl⟩
-    simp only [c, dif_pos h]
-    exact ⟨h.choose.2, h.choose_spec⟩
-  let Φ : {x : A // x ^ n = 1} → {x : A // f x = 1 ∧ x ^ n = 1} × {y : B // y ^ n = 1} := fun x =>
-    (⟨x * (c (f x))⁻¹, by
-        refine ⟨?_, ?_⟩
-        · rw [map_mul, map_inv, (hc x).2, mul_inv_cancel]
-        · rw [mul_pow, inv_pow, x.2, (hc x).1]
-          simp⟩,
-     ⟨f x, by rw [← map_pow, x.2, map_one]⟩)
-  have hΦ : Function.Injective Φ := by
-    intro x y hxy
-    simp only [Φ, Prod.mk.injEq, Subtype.mk.injEq] at hxy
-    obtain ⟨h1, h2⟩ := hxy
-    rw [h2] at h1
-    exact Subtype.ext (mul_right_cancel h1)
-  have : Finite {x : A // x ^ n = 1} := Finite.of_injective Φ hΦ
-  refine ⟨inferInstance, ?_⟩
-  have := Nat.card_le_card_of_injective Φ hΦ
-  rwa [Nat.card_prod] at this
+  let e : {t : f.ker // t ^ n = 1} ≃ {x : A // f x = 1 ∧ x ^ n = 1} :=
+    { toFun := fun x => ⟨x.1, x.1.2, congrArg Subtype.val x.2⟩
+      invFun := fun x => ⟨⟨x.1, x.2.1⟩, Subtype.ext x.2.2⟩
+      left_inv := fun _ => rfl
+      right_inv := fun _ => rfl }
+  let _ : Finite {t : f.ker // t ^ n = 1} := Finite.of_equiv _ e.symm
+  let c : {x : A // x ^ n = 1} → {y : B // y ^ n = 1} :=
+    fun x => ⟨f x.1, by rw [← map_pow, x.2, map_one]⟩
+  obtain ⟨hfin, hcard⟩ := Alpoge.GroupTheory.finite_and_card_le_of_torsion_fibers n (P := fun x => x ^ n = 1)
+    (fun x => x.2) (fun x y => Commute.all x.1 y.1) f.ker.subtype Subtype.val_injective c
+    (fun x y h => by
+      have hxy : f x.1 = f y.1 := congrArg Subtype.val h
+      refine ⟨⟨x.1 * y.1⁻¹, ?_⟩, rfl⟩
+      change f (x.1 * y.1⁻¹) = 1
+      rw [map_mul, map_inv, hxy, mul_inv_cancel])
+  exact ⟨hfin, by simpa only [Nat.card_congr e, Nat.mul_comm] using hcard⟩
 
 variable {S : Scheme.{0}}
 

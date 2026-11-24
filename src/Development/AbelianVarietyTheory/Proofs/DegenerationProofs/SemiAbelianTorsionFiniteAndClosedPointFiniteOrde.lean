@@ -1,5 +1,6 @@
 module
 
+import Formalism.SharedLemmas.TorsionFibers
 public import ReciprocityTheory.ReductiveGroups.ArithmeticGeometry.BirationalGeometry.ToroidalCompactification.IsCompletedStrictHens
 public import ReciprocityTheory.ReductiveGroups.ArithmeticGeometry.SemiabelianSchemes.AbelianSchemeQuotients.IsAbelianScheme
 public import Development.AbelianVarietyTheory.Proofs.AbelianSchemeLawProofs.ExistsSplitTorusPointsMulEquiv
@@ -61,22 +62,14 @@ theorem finite_pow_eq_one_of_extension {T G B : Type*} [Group T] [CommGroup G] [
     (i : T →* G) (q : G →* B) (hi : Function.Injective i) (hk : ∀ x, q x = 1 → ∃ t, i t = x)
     (n : ℕ) (hT : Finite {t : T // t ^ n = 1}) (hB : Finite {b : B // b ^ n = 1}) :
     Finite {x : G // x ^ n = 1} := by
+  let _ := hT
+  let _ := hB
   let f : {x : G // x ^ n = 1} → {b : B // b ^ n = 1} :=
     fun x => ⟨q x.1, by rw [← map_pow, x.2, map_one]⟩
-  refine Set.finite_univ_iff.mp (Set.Finite.of_finite_fibers f (Set.toFinite _) fun b hb => ?_)
-  obtain ⟨x₀, -, rfl⟩ := hb
-  rw [Set.univ_inter, ← Set.finite_coe_iff]
-  have key : ∀ x : f ⁻¹' {f x₀}, ∃ t : {t : T // t ^ n = 1}, i t.1 = x.1.1 / x₀.1 := by
-    intro x
-    have hx : q x.1.1 = q x₀.1 := congrArg Subtype.val x.2
-    obtain ⟨t, ht⟩ := hk (x.1.1 / x₀.1) (by rw [map_div, hx, div_self'])
-    refine ⟨⟨t, hi ?_⟩, ht⟩
-    rw [map_pow, ht, div_pow, x.1.2, x₀.2, map_one, div_one]
-  choose g hg using key
-  refine Finite.of_injective g fun x y h => Subtype.ext (Subtype.ext ?_)
-  have := hg x
-  rw [h, hg y] at this
-  exact (div_left_inj.mp this).symm
+  exact (Alpoge.GroupTheory.finite_and_card_le_of_torsion_fibers n (P := fun x => x ^ n = 1)
+    (fun x => x.2) (fun x y => Commute.all x.1 y.1) i hi f (fun x y h => by
+      have hxy : q x.1 = q y.1 := congrArg Subtype.val h
+      exact hk _ (by rw [map_mul, map_inv, hxy, mul_inv_cancel]))).1
 
 theorem finite_chars_pow_eq_one (X : Type) [AddCommGroup X] [Module.Finite ℤ X] (R : Type)
     [CommRing R] [IsDomain R] {n : ℕ} (hn : 1 ≤ n) :
