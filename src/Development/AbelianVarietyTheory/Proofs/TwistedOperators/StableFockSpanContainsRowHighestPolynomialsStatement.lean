@@ -361,50 +361,6 @@ end Rot
 end GlobalTheory.Harm
 
 namespace GlobalTheory.Harm
-
-section Vandermonde
-variable {K V ι : Type*} [Field K] [AddCommGroup V] [Module K V]
-
-theorem sum_smul_mem_of_sum_pow_smul_mem_on (W : Submodule K V) {U : Set K} (hU : U.Infinite)
-    (S : Finset ι) (e : ι → ℕ) (v : ι → V) (h : ∀ u ∈ U, ∑ i ∈ S, u ^ e i • v i ∈ W) (f : ℕ → K) :
-    ∑ i ∈ S, f (e i) • v i ∈ W := by
-  rw [← Subspace.forall_mem_dualAnnihilator_apply_eq_zero_iff]
-  intro φ hφ
-  rw [Submodule.mem_dualAnnihilator] at hφ
-  have hP : (∑ i ∈ S, Polynomial.monomial (e i) (φ (v i))) = 0 := by
-    apply Polynomial.eq_zero_of_infinite_isRoot
-    refine Set.Infinite.mono ?_ hU
-    intro u hu
-    have := hφ _ (h u hu)
-
-    simp only [map_sum, map_smul, smul_eq_mul] at this
-    simpa [Polynomial.eval_finsetSum, mul_comm] using this
-  have := congrArg (Polynomial.lsum (R := K) (fun n => f n • (LinearMap.id : K →ₗ[K] K))) hP
-
-  simpa [map_sum, Polynomial.lsum_apply, Polynomial.sum_monomial_index] using this
-
-theorem sum_smul_mem_of_sum_zpow_smul_mem_on (W : Submodule K V) {U : Set K} (hU : U.Infinite)
-    (hU0 : ∀ u ∈ U, u ≠ 0) (S : Finset ι) (e : ι → ℤ) (v : ι → V)
-    (h : ∀ u ∈ U, ∑ i ∈ S, u ^ e i • v i ∈ W) (f : ℤ → K) :
-    ∑ i ∈ S, f (e i) • v i ∈ W := by
-  set N : ℕ := ∑ i ∈ S, (e i).natAbs with hN
-  have hle : ∀ i ∈ S, (((e i + N).toNat : ℕ) : ℤ) = e i + N := fun i hi => by
-    have : (e i).natAbs ≤ N :=
-      Finset.single_le_sum (f := fun i => (e i).natAbs) (fun _ _ => Nat.zero_le _) hi
-    omega
-  have := sum_smul_mem_of_sum_pow_smul_mem_on W hU S (fun i => (e i + N).toNat) v (fun u hu => by
-    have := W.smul_mem (u ^ N) (h u hu)
-    rw [Finset.smul_sum] at this
-    convert this using 1
-    refine Finset.sum_congr rfl fun i hi => ?_
-    rw [smul_smul, ← zpow_natCast, hle i hi, zpow_add₀ (hU0 u hu), zpow_natCast, mul_comm])
-    (fun n => f (n - N))
-  convert this using 1
-  refine Finset.sum_congr rfl fun i hi => ?_
-  rw [hle i hi, add_sub_cancel_right]
-
-end Vandermonde
-
 theorem infinite_unit_circle : {u : ℂ | u * star u = 1}.Infinite := by
   have hne : ∀ x : ℝ, (1 - (x : ℂ) * Complex.I) ≠ 0 := fun x h => by
     have := congrArg Complex.re h; simp at this
