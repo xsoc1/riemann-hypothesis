@@ -455,18 +455,15 @@ theorem units_localization_pow_surj : ∀ (T O : Type) [CommRing T] [IsDomain T]
   have hψ : ∀ p : Ideal (Localization (Algebra.algebraMapSubmonoid O (nonZeroDivisors T))), p.IsPrime →
       ∃ e, ψ (fun _ => e) ∉ p := fun p hp =>
     ⟨1, fun h => hp.ne_top (Ideal.eq_top_of_isUnit_mem _ h (hψ1 ▸ u.isUnit))⟩
-  obtain ⟨hfin, hproj, hff⟩ := _root_.GlobalTheory.KummerAlg.finite_projective_faithfullyFlat _ _ q ψ hq0 hψ
   have hζ' : algebraMap T (Localization (Algebra.algebraMapSubmonoid O (nonZeroDivisors T))) ζ ^ q = 1 := by
     rw [← map_pow, hζ, map_one]
-  obtain ⟨s⟩ := GlobalTheory.LocAcyc.torsor_trivial T O hT.2 P φ hφ hsh q hq0 hq (GlobalTheory.KummerAlg.Alg ψ)
-    hfin hproj hff (GlobalTheory.KummerAlg.act ψ _ hζ')
-    (_root_.GlobalTheory.KummerTorsor.bijective _ _ q ψ
-      (by simpa using hq.map (algebraMap T (Localization (Algebra.algebraMapSubmonoid O (nonZeroDivisors T)))))
-      hψ _ hζ' fun k hk hkq => by
-        simpa using (hζu k hk hkq).map (algebraMap T (Localization (Algebra.algebraMapSubmonoid O (nonZeroDivisors T)))))
-  have hpow : s (GlobalTheory.KummerAlg.gen ψ 1) ^ q = u := by
-    have h := congrArg s (GlobalTheory.KummerAlg.prod_gen ψ (fun _ => 1))
-    simpa [map_prod, Finset.prod_const, AlgHom.commutes, hψ1] using h
+  obtain ⟨s⟩ := GlobalTheory.KummerStep.exists_section _ _ q ψ hq0
+    (by simpa using hq.map (algebraMap T (Localization (Algebra.algebraMapSubmonoid O (nonZeroDivisors T)))))
+    hψ _ hζ' (fun k hk hkq => by
+      simpa using (hζu k hk hkq).map (algebraMap T (Localization (Algebra.algebraMapSubmonoid O (nonZeroDivisors T)))))
+    (GlobalTheory.LocAcyc.torsor_trivial T O hT.2 P φ hφ hsh q hq0 hq)
+  have hpow : s (GlobalTheory.KummerAlg.gen ψ 1) ^ q = u :=
+    (GlobalTheory.KummerStep.section_gen_pow _ _ q ψ s 1).trans hψ1
   have hunit : IsUnit (s (GlobalTheory.KummerAlg.gen ψ 1)) :=
     (isUnit_pow_iff hq0.ne').1 (hpow ▸ u.isUnit)
   exact ⟨hunit.unit, Units.ext (by simpa using hpow)⟩

@@ -875,14 +875,31 @@ theorem p1 : ∀ (B : Type) [CommRing B] (L : Type) [AddCommGroup L] [Module B L
 theorem p2 : ∀ (B : Type) [CommRing B] (L : Type) [AddCommGroup L] [Module B L] [Module.Invertible B L] (q : ℕ) [NeZero q] (φ : MultilinearMap (RingHom.id B) (fun _ : Fin q => L) B), IsUnit (q : B) → (∀ p : Ideal B, p.IsPrime → ∃ e : L, φ (fun _ => e) ∉ p) → ∀ (ζ : B) (hζ : ζ ^ q = 1), (∀ k : ℕ, 0 < k → k < q → IsUnit (1 - ζ ^ k)) → Function.Bijective (Algebra.TensorProduct.productMap (Pi.algHom B (fun _ : Multiplicative (ZMod q) => GlobalTheory.KummerAlg.Alg φ) (fun _ => AlgHom.id B (GlobalTheory.KummerAlg.Alg φ))) (Pi.algHom B (fun _ : Multiplicative (ZMod q) => GlobalTheory.KummerAlg.Alg φ) (fun g => (GlobalTheory.KummerAlg.act φ ζ hζ g).toAlgHom))) := _root_.GlobalTheory.KummerTorsor.bijective
 theorem p4 : ∀ (B : Type) [CommRing B] (q : ℕ) (c : CommRing.Pic B), c ^ q = 1 → ∃ φ : MultilinearMap (RingHom.id B) (fun _ : Fin q => CommRing.Pic.AsModule c) B, ∀ p : Ideal B, p.IsPrime → ∃ e : CommRing.Pic.AsModule c, φ (fun _ => e) ∉ p := GlobalTheory.T.exists_multilinear_form_of_pic_torsion
 
+theorem exists_section (B : Type) [CommRing B] (L : Type) [AddCommGroup L] [Module B L]
+    [Module.Invertible B L] (q : ℕ) (φ : (Π _ : Fin q, L) →ₘₗ[B] B) (hq : 0 < q)
+    (hqu : IsUnit (q : B)) (hφ : ∀ p : Ideal B, p.IsPrime → ∃ e : L, φ (fun _ => e) ∉ p)
+    (ζ : B) (hζ : ζ ^ q = 1) (hζk : ∀ k : ℕ, 0 < k → k < q → IsUnit (1 - ζ ^ k))
+    (hT : ∀ (D : Type) [CommRing D] [Algebra B D], Module.Finite B D → Module.Projective B D →
+      Module.FaithfullyFlat B D → ∀ act : Multiplicative (ZMod q) →* (D ≃ₐ[B] D),
+      Function.Bijective (Algebra.TensorProduct.productMap
+        (Pi.algHom B (fun _ : Multiplicative (ZMod q) => D) (fun _ => AlgHom.id B D))
+        (Pi.algHom B (fun _ : Multiplicative (ZMod q) => D) (fun g => (act g).toAlgHom))) →
+      Nonempty (D →ₐ[B] B)) : Nonempty (Alg φ →ₐ[B] B) := by
+  haveI : NeZero q := ⟨hq.ne'⟩
+  obtain ⟨hfin, hproj, hff⟩ := p1 B L q φ hq hφ
+  exact hT (Alg φ) hfin hproj hff (act φ ζ hζ) (p2 B L q φ hqu hφ ζ hζ hζk)
+
+theorem section_gen_pow (B : Type) [CommRing B] (L : Type) [AddCommGroup L] [Module B L]
+    (q : ℕ) (φ : (Π _ : Fin q, L) →ₘₗ[B] B) (s : Alg φ →ₐ[B] B) (e : L) :
+    s (gen φ e) ^ q = φ (fun _ => e) := by
+  simpa [map_prod, Finset.prod_const, AlgHom.commutes] using congrArg s (prod_gen φ (fun _ => e))
+
 theorem free_of_section (B : Type) [CommRing B] (L : Type) [AddCommGroup L] [Module B L]
     [Module.Invertible B L] (q : ℕ) (φ : MultilinearMap (RingHom.id B) (fun _ : Fin q => L) B) (hq : 0 < q)
     (hφ : ∀ p : Ideal B, p.IsPrime → ∃ e : L, φ (fun _ => e) ∉ p)
     (s : Alg φ →ₐ[B] B) : Module.Free B L := by
   let f : L →ₗ[B] B := s.toLinearMap ∘ₗ gen φ
-  have hf : ∀ e : L, f e ^ q = φ (fun _ => e) := fun e => by
-    have := congrArg s (prod_gen φ (fun _ => e))
-    simpa [f, map_prod, Finset.prod_const, AlgHom.commutes] using this
+  have hf (e : L) : f e ^ q = φ (fun _ => e) := section_gen_pow B L q φ s e
   have hsurj : Function.Surjective f := by
     rw [← LinearMap.range_eq_top]
     by_contra h
@@ -903,10 +920,8 @@ theorem kummer_step : ∀ (B : Type) [CommRing B] (q : ℕ), 0 < q → IsUnit (q
         (Pi.algHom B (fun _ : Multiplicative (ZMod q) => D) (fun g => (act g).toAlgHom))) → Nonempty (D →ₐ[B] B)) →
     ∀ c : CommRing.Pic B, c ^ q = 1 → c = 1 := by
   intro B _ q hq hqu ⟨ζ, hζ, hζk⟩ hT c hc
-  haveI : NeZero q := ⟨hq.ne'⟩
   obtain ⟨φ, hφ⟩ := p4 B q c hc
-  obtain ⟨hfin, hproj, hff⟩ := _root_.GlobalTheory.KummerAlg.finite_projective_faithfullyFlat B (CommRing.Pic.AsModule c) q φ hq hφ
-  obtain ⟨s⟩ := hT (Alg φ) hfin hproj hff (act φ ζ hζ) (_root_.GlobalTheory.KummerTorsor.bijective B (CommRing.Pic.AsModule c) q φ hqu hφ ζ hζ hζk)
+  obtain ⟨s⟩ := exists_section B (CommRing.Pic.AsModule c) q φ hq hqu hφ ζ hζ hζk hT
   have := free_of_section B (CommRing.Pic.AsModule c) q φ hq hφ s
   rw [← CommRing.Pic.mk_eq_self (M := c), CommRing.Pic.mk_eq_one_iff_free]
   exact this
