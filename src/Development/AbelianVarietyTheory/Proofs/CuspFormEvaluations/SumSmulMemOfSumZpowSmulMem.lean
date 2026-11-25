@@ -60,17 +60,19 @@ namespace GlobalTheory.Harm
 
 section General
 
-variable {K V ι : Type*} [Field K] [Infinite K] [AddCommGroup V] [Module K V]
+variable {K V ι : Type*} [Field K] [AddCommGroup V] [Module K V]
 
-theorem sum_smul_mem_of_sum_pow_smul_mem (W : Submodule K V) (S : Finset ι) (e : ι → ℕ) (v : ι → V)
-    (h : ∀ u : K, u ≠ 0 → ∑ i ∈ S, u ^ e i • v i ∈ W) (f : ℕ → K) :
+/-- Finite sums of powers taking values in a submodule on an infinite set stay there
+after reweighting each group of terms with the same exponent. -/
+theorem sum_smul_mem_of_sum_pow_smul_mem_on (W : Submodule K V) {U : Set K} (hU : U.Infinite)
+    (S : Finset ι) (e : ι → ℕ) (v : ι → V) (h : ∀ u ∈ U, ∑ i ∈ S, u ^ e i • v i ∈ W) (f : ℕ → K) :
     ∑ i ∈ S, f (e i) • v i ∈ W := by
   rw [← Subspace.forall_mem_dualAnnihilator_apply_eq_zero_iff]
   intro φ hφ
   rw [Submodule.mem_dualAnnihilator] at hφ
   have hP : (∑ i ∈ S, Polynomial.monomial (e i) (φ (v i))) = 0 := by
     apply Polynomial.eq_zero_of_infinite_isRoot
-    refine Set.Infinite.mono (s := {0}ᶜ) ?_ (Set.finite_singleton (0 : K)).infinite_compl
+    refine Set.Infinite.mono ?_ hU
     intro u hu
     have := hφ _ (h u hu)
 
@@ -80,24 +82,28 @@ theorem sum_smul_mem_of_sum_pow_smul_mem (W : Submodule K V) (S : Finset ι) (e 
 
   simpa [map_sum, Polynomial.lsum_apply, Polynomial.sum_monomial_index] using this
 
-theorem sum_smul_mem_of_sum_zpow_smul_mem (W : Submodule K V) (S : Finset ι) (e : ι → ℤ) (v : ι → V)
-    (h : ∀ u : K, u ≠ 0 → ∑ i ∈ S, u ^ e i • v i ∈ W) (f : ℤ → K) :
+/-- The corresponding coefficient projection for integer powers on nonzero scalars. -/
+theorem sum_smul_mem_of_sum_zpow_smul_mem_on (W : Submodule K V) {U : Set K} (hU : U.Infinite)
+    (hU0 : ∀ u ∈ U, u ≠ 0) (S : Finset ι) (e : ι → ℤ) (v : ι → V)
+    (h : ∀ u ∈ U, ∑ i ∈ S, u ^ e i • v i ∈ W) (f : ℤ → K) :
     ∑ i ∈ S, f (e i) • v i ∈ W := by
   set N : ℕ := ∑ i ∈ S, (e i).natAbs with hN
   have hle : ∀ i ∈ S, (((e i + N).toNat : ℕ) : ℤ) = e i + N := fun i hi => by
     have : (e i).natAbs ≤ N :=
       Finset.single_le_sum (f := fun i => (e i).natAbs) (fun _ _ => Nat.zero_le _) hi
-    omega
-  have := sum_smul_mem_of_sum_pow_smul_mem W S (fun i => (e i + N).toNat) v (fun u hu => by
+    lia
+  have := sum_smul_mem_of_sum_pow_smul_mem_on W hU S (fun i => (e i + N).toNat) v (fun u hu => by
     have := W.smul_mem (u ^ N) (h u hu)
     rw [Finset.smul_sum] at this
     convert this using 1
     refine Finset.sum_congr rfl fun i hi => ?_
-    rw [smul_smul, ← zpow_natCast, hle i hi, zpow_add₀ hu, zpow_natCast, mul_comm])
+    rw [smul_smul, ← zpow_natCast, hle i hi, zpow_add₀ (hU0 u hu), zpow_natCast, mul_comm])
     (fun n => f (n - N))
   convert this using 1
   refine Finset.sum_congr rfl fun i hi => ?_
   rw [hle i hi, add_sub_cancel_right]
+
+variable [Infinite K]
 
 theorem derivation_mem_of_aeval_mem {σ : Type*} (W : Submodule K (MvPolynomial σ K))
     (D : Derivation K (MvPolynomial σ K) (MvPolynomial σ K)) (w : MvPolynomial σ K)
@@ -129,10 +135,11 @@ theorem derivation_mem_of_aeval_mem {σ : Type*} (W : Submodule K (MvPolynomial 
       · rw [Polynomial.coeff_add, Polynomial.coeff_mul_C, Polynomial.coeff_X_mul,
           Polynomial.coeff_mul_C, h0, h1, Derivation.leibniz]
         simp only [smul_eq_mul]; ring
-  have := sum_smul_mem_of_sum_pow_smul_mem W (Φ w).support id (Φ w).coeff (fun u _ => by
-    have := h u
-    rw [← hev, Polynomial.eval_eq_sum, Polynomial.sum_def] at this
-    simpa [smul_eq_C_mul, mul_comm] using this) (fun n => if n = 1 then 1 else 0)
+  have := sum_smul_mem_of_sum_pow_smul_mem_on W Set.infinite_univ
+    (Φ w).support id (Φ w).coeff (fun u _ => by
+      have := h u
+      rw [← hev, Polynomial.eval_eq_sum, Polynomial.sum_def] at this
+      simpa [smul_eq_C_mul, mul_comm] using this) (fun n => if n = 1 then 1 else 0)
   rw [← (hco w).2]
   by_cases h1 : 1 ∈ (Φ w).support
   · simpa [ite_smul, h1] using this
@@ -370,13 +377,15 @@ theorem colLie_mem_of_colAct_mem {K : Type*} [Field K] [Infinite K] [Fintype κ]
   classical
   by_cases hkl : k = l
   · subst hkl
-    have := sum_smul_mem_of_sum_zpow_smul_mem W w.support (fun m => colWeight m t k)
+    have := sum_smul_mem_of_sum_zpow_smul_mem_on W
+      (Set.finite_singleton (0 : K)).infinite_compl (fun _ hu => hu)
+      w.support (fun m => colWeight m t k)
       (fun m => monomial m (AddMonoidAlgebra.coeff w m)) (fun u hu => by
+        change u ≠ 0 at hu
         obtain ⟨g, hg⟩ := exists_colAct_monomial (p := p) (q := q) t k (Units.mk0 u hu)
-        have := hW g w hw
-
-        rw [w.as_sum, map_sum] at this
-        simpa only [hg, Units.val_zpow_eq_zpow_val, Units.val_mk0] using this) Int.cast
+        have h := hW g w hw
+        rw [w.as_sum, map_sum] at h
+        simpa only [hg, Units.val_zpow_eq_zpow_val, Units.val_mk0] using h) Int.cast
 
     rw [w.as_sum, map_sum]
     simpa only [colLie_monomial] using this
